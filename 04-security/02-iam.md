@@ -1,87 +1,105 @@
-# AWS IAM 🔑
+# AWS Identity and Access Management (IAM) 🔑
 
-AWS Identity and Access Management (IAM) is a service used to securely control access to AWS resources.
+AWS Identity and Access Management (IAM) is a global AWS service that helps securely control access to AWS resources.
 
-IAM helps determine:
+IAM allows organizations to determine:
 
-* **Who** can access AWS
-* **What** they can do
-* **Which resources** they can access
+* Who can access AWS
+* What they can do
+* Which resources they can access
+* Under which conditions access is allowed
 
-## IAM Mental Model
+## IAM in One Sentence
 
-```text
-Identity
-   │
-   ▼
-Authentication
-   │
-   ▼
-Authorization
-   │
-   ▼
-AWS Resource
-```
+> IAM controls **who can do what on which AWS resources**.
 
-### Authentication
+---
+
+# Authentication vs Authorization
+
+Two fundamental concepts in IAM are authentication and authorization.
+
+## Authentication
 
 Authentication answers:
 
 > **Who are you?**
 
-For example:
+Examples:
 
 * Username and password
 * Access keys
 * MFA
 
-### Authorization
+```text
+User
+ │
+ ▼
+Authentication
+ │
+ ▼
+"Who are you?"
+```
+
+## Authorization
 
 Authorization answers:
 
 > **What are you allowed to do?**
 
-Permissions determine which actions an identity can perform.
-
-## IAM Is a Global Service
-
-IAM is not tied to a specific AWS Region in the same way as Regional services such as EC2.
-
-IAM is used across the AWS account to manage identities and permissions.
-
-## Principle of Least Privilege
-
-One of the most important security principles is **least privilege**.
-
-It means:
-
-> Give a user, application, or service only the permissions required to perform its task.
-
-### Bad Example
-
-A developer only needs to read objects from an S3 bucket but receives full administrator permissions.
-
 ```text
-Required:
-S3 Read
-
-Granted:
-Administrator Access ❌
+Authenticated User
+        │
+        ▼
+Authorization
+        │
+        ▼
+"What can you do?"
 ```
 
-### Better Example
+For example:
 
 ```text
-Required:
-S3 Read
-
-Granted:
-Only the required S3 read permissions ✅
+Alice
+ │
+ └── Can read objects from S3
 ```
 
-Least privilege reduces the potential impact of compromised credentials or accidental actions.
+while another user might have:
 
-## IAM Components
+```text
+Bob
+ │
+ └── Can manage EC2 instances
+```
+
+---
+
+# IAM Is a Global Service
+
+IAM is a global AWS service.
+
+It is not associated with a specific AWS Region in the same way as Regional services such as EC2.
+
+Therefore:
+
+```text
+IAM
+│
+└── AWS Account
+     │
+     ├── Region A
+     ├── Region B
+     └── Region C
+```
+
+IAM identities and permissions are managed at the account level.
+
+This is why the Region selector does not behave the same way when working with IAM as it does with Regional services.
+
+---
+
+# Main IAM Components
 
 The main IAM concepts are:
 
@@ -89,72 +107,227 @@ The main IAM concepts are:
 IAM
 │
 ├── Users
-│
 ├── Groups
-│
 ├── Policies
-│
 └── Roles
 ```
 
-## IAM Users
+Each has a different purpose.
 
-An IAM user represents an identity within an AWS account.
+---
 
-A user can have permissions assigned through policies, directly or through groups.
+# IAM Users
 
-## IAM Groups
+An IAM User represents an identity within an AWS account.
 
-Groups allow multiple IAM users to be managed together.
+A user can represent a person who needs access to AWS.
 
-Instead of assigning the same permissions individually:
+Example:
 
 ```text
-User A ──┐
-User B ──┼── Developers Group ── Policy
-User C ──┘
+AWS Account
+│
+├── Alice
+├── Bob
+├── Charles
+├── David
+└── Edward
 ```
 
-This simplifies permission management.
+Users can have permissions assigned through policies.
 
-## IAM Policies
+---
 
-Policies are documents that define permissions.
+# IAM Groups
+
+An IAM Group is a collection of IAM Users.
+
+Groups are useful when multiple users need similar permissions.
+
+Example:
+
+```text
+Development
+│
+├── Alice
+├── Bob
+└── Charles
+```
+
+The group can have policies attached to it.
+
+The users then receive the permissions associated with those policies through their group membership.
+
+---
+
+# Important Group Rules
+
+### Groups contain users
+
+An IAM Group can contain users.
+
+### Groups cannot contain other groups
+
+```text
+Group A
+   │
+   └── Group B ❌
+```
+
+This is not supported.
+
+### Users do not have to belong to a group
+
+A user can exist without belonging to any group.
+
+However, groups are useful for organizing and managing common permissions.
+
+### Users can belong to multiple groups
+
+Example:
+
+```text
+Development
+│
+└── Charles
+
+Audit Team
+│
+└── Charles
+```
+
+Charles belongs to both groups.
+
+The applicable permissions from those groups are considered when AWS evaluates his access.
+
+---
+
+# IAM Policies
+
+IAM Policies are JSON documents that define permissions.
 
 A policy can specify:
 
-* Effect
-* Action
-* Resource
+* Actions
+* Resources
 * Conditions
+* Allow or Deny effects
 
-Simplified example:
+Simplified model:
 
 ```text
-Effect: Allow
-Action: s3:GetObject
-Resource: specific S3 objects
+User / Group / Role
+        │
+        ▼
+      Policy
+        │
+        ▼
+   Permissions
 ```
 
-## IAM Roles
+---
 
-An IAM role is an identity with permissions that can be assumed by trusted entities.
+# Principle of Least Privilege
+
+The **Principle of Least Privilege** means giving an identity only the permissions required to perform its tasks.
+
+Example:
+
+```text
+Application requirement:
+
+Read files from S3
+```
+
+Bad approach:
+
+```text
+AdministratorAccess ❌
+```
+
+Better approach:
+
+```text
+Only required S3 read permissions ✅
+```
+
+This reduces the potential impact of:
+
+* Compromised credentials
+* Accidental actions
+* Unauthorized activity
+* Excessive permissions
+
+---
+
+# IAM Roles
+
+IAM Roles are identities that can be assumed by trusted entities.
 
 Roles are commonly used by:
 
 * AWS services
 * Applications
 * EC2 instances
-* Users or identities that need temporary access
+* Users
+* Federated identities
 
-For example, an EC2 instance can assume a role that allows it to access an S3 bucket without storing long-term AWS access keys on the server.
+For example:
+
+```text
+EC2 Instance
+     │
+     ▼
+IAM Role
+     │
+     ▼
+S3 Permissions
+```
+
+This allows an EC2 instance to access S3 without embedding long-term access keys directly in the instance.
+
+---
+
+# Root User
+
+When an AWS account is created, a Root User is created as part of the account.
+
+The Root User has unrestricted access to the AWS account.
+
+Because of this, the Root User should not be used for everyday administrative tasks.
+
+```text
+AWS Account
+│
+├── Root User
+│
+├── IAM Users
+├── IAM Groups
+└── IAM Roles
+```
+
+---
+
+# IAM Security Best Practices
+
+Important IAM practices include:
+
+* Avoid using the Root User for everyday tasks.
+* Enable MFA for privileged identities.
+* Follow the Principle of Least Privilege.
+* Use groups to organize common permissions.
+* Use roles when appropriate.
+* Avoid unnecessary long-term credentials.
+* Regularly review permissions.
 
 ## Key Takeaways
 
-* **IAM = identity and access management**
-* Authentication = who you are
-* Authorization = what you can do
-* Policies define permissions
-* Groups organize users
-* Roles provide permissions to trusted entities
-* Use least privilege
+* IAM is a global service.
+* IAM manages identity and access.
+* Authentication determines who you are.
+* Authorization determines what you can do.
+* Users represent identities.
+* Groups organize users.
+* Policies define permissions.
+* Roles provide assumable permissions.
+* Least privilege reduces unnecessary access.
